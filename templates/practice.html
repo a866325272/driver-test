@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}練習{% endblock %}
+{% block main %}
+<div class="toolbar">
+  <label>範圍
+    <select id="section">
+      <option value="all">全部（1090 題）</option>
+      {% for s in sections %}<option value="{{ loop.index }}">{{ s }}</option>{% endfor %}
+    </select>
+  </label>
+  <span class="session" id="session">本次：0 題</span>
+</div>
+
+<article class="card" id="card">
+  <div class="qmeta">
+    <span class="qid" id="qid"></span>
+    <span class="tag" id="qsub"></span>
+  </div>
+  <p class="stem" id="stem"></p>
+  <div class="stem-images" id="stem-images"></div>
+  <div class="options" id="options"></div>
+  <div class="feedback" id="feedback" hidden></div>
+  <div class="qstat" id="qstat"></div>
+  <div class="actions">
+    <button id="next" class="primary">下一題</button>
+  </div>
+  <p class="hint">快捷鍵：1 / 2 / 3 作答，Enter 或空白鍵下一題</p>
+</article>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='practice.js') }}"></script>{% endblock %}

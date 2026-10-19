@@ -1,0 +1,11 @@
+services:
+  driver-test:
+    build: .
+    image: driver-test:latest
+    container_name: driver-test
+    ports:
+      - "8000:8000"
+    volumes:
+      # 作答紀錄 progress.db 存在 host 的 ./progress，container 重建也不會遺失
+      - ./progress:/data
+    restart: unless-stopped

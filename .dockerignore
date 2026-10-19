@@ -1,0 +1,10 @@
+venv/
+.venv/
+var/
+progress/
+tools/
+tests/
+__pycache__/
+*.pyc
+*.pdf
+.git/

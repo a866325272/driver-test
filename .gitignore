@@ -1,0 +1,8 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+# 作答紀錄（本機與 Docker）
+var/
+progress/
+.DS_Store

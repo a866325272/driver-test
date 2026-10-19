@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}統計{% endblock %}
+{% block main %}
+<section class="tiles" id="tiles"></section>
+
+<section class="card">
+  <h2>各架構</h2>
+  <table class="summary">
+    <thead><tr><th>架構</th><th class="n">題數</th><th class="n">已練習</th><th class="n">覆蓋率</th><th class="n">作答次數</th><th class="n">答對率</th></tr></thead>
+    <tbody id="sections"></tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>逐題統計</h2>
+  <div class="filters">
+    <select id="f-section">
+      <option value="">全部架構</option>
+      {% for s in sections %}<option value="{{ loop.index }}">{{ s }}</option>{% endfor %}
+    </select>
+    <select id="f-status">
+      <option value="">全部狀態</option>
+      <option value="unseen">還沒練過</option>
+      <option value="seen">練過的</option>
+      <option value="weak">答對率低於 60%</option>
+      <option value="lastwrong">最近一次答錯</option>
+    </select>
+    <input id="f-text" type="search" placeholder="搜尋題號或題目文字">
+    <span id="count" class="muted"></span>
+  </div>
+  <div class="table-wrap">
+    <table class="questions">
+      <thead><tr>
+        <th data-sort="id" class="n">題號</th>
+        <th data-sort="section">架構</th>
+        <th data-sort="stem">題目</th>
+        <th data-sort="attempts" class="n">次數</th>
+        <th data-sort="correct" class="n">答對</th>
+        <th data-sort="accuracy" class="n">答對率</th>
+        <th data-sort="last_at">最後練習</th>
+        <th data-sort="probability" class="n">抽中機率</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="hint">點題目列可以展開選項與答案。抽中機率以「全部 1090 題」為範圍計算。</p>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='stats.js') }}"></script>{% endblock %}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} · 汽車筆試練習</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">汽車筆試練習</span>
+    <nav>
+      <a href="{{ url_for('practice_page') }}" class="{{ 'active' if request.endpoint == 'practice_page' }}">練習</a>
+      <a href="{{ url_for('stats_page') }}" class="{{ 'active' if request.endpoint == 'stats_page' }}">統計</a>
+    </nav>
+  </header>
+  <main>{% block main %}{% endblock %}</main>
+  <script>
+    const SECTIONS = {{ sections | tojson }};
+    const IMG_BASE = "{{ url_for('static', filename='img/') }}";
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

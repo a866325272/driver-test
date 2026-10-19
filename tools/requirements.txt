@@ -1,0 +1,2 @@
+# 只有重新解析 PDF 時需要（tools/parse_pdf.py），執行 app 不需要
+pymupdf==1.28.2
