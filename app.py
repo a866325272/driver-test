@@ -1,12 +1,13 @@
 """汽車筆試題庫練習 web app。
 
-    python app.py          # 開發模式，http://localhost:5000/driver-test
+    python app.py          # 開發模式，http://localhost:5000/driver-test/
 
 路徑都在 /driver-test 底下，reverse proxy 只要設一條規則：
-    /driver-test           練習頁
+    /driver-test/          練習頁（/driver-test 會轉址補上結尾斜線）
     /driver-test/stats     統計頁
     /driver-test/api/...   API
     /driver-test/static/.. 靜態檔與題目圖片
+proxy 轉進來時有沒有拿掉 /driver-test 都可以（見 PrefixFallback）。
 環境變數：
     PROGRESS_DB  作答紀錄 SQLite 檔路徑（預設 ./var/progress.db）
 """
@@ -31,7 +32,28 @@ SECTIONS = list(dict.fromkeys(q["section"] for q in QUESTIONS.values()))
 PREFIX = "/driver-test"
 API = f"{PREFIX}/api"
 
+
+
+class PrefixFallback:
+    """沒有 /driver-test 開頭的請求，補上 prefix 再交給 Flask。
+
+    nginx 的 proxy_pass 若帶結尾斜線（proxy_pass http://app:8000/;）會把 prefix 拿掉再轉進來，
+    例如 /driver-test/stats 進來時變成 /stats。補回 prefix 後，不管 proxy 有沒有拿掉都能對到同一組 route，
+    頁面裡的連結一律用 /driver-test 開頭的絕對路徑，經過 proxy 也正確。
+    """
+
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get("PATH_INFO", "")
+        if path != PREFIX and not path.startswith(PREFIX + "/"):
+            environ["PATH_INFO"] = PREFIX + path
+        return self.wsgi_app(environ, start_response)
+
+
 app = Flask(__name__, static_url_path=f"{PREFIX}/static")
+app.wsgi_app = PrefixFallback(app.wsgi_app)
 store = Store(DB_PATH)
 
 
@@ -68,17 +90,14 @@ def inject_api_base():
     return {"api_base": API}
 
 
-@app.get("/")
-def root():
-    return redirect(PREFIX)
+# /driver-test 補上結尾斜線，和 nginx 同方向（反過來會和 proxy 互相轉址）。
+# 自己寫而不靠 Flask 的自動轉址，因為 Flask 會產生帶內部 Host 的絕對網址，經過 proxy 會轉錯地方。
+@app.get(PREFIX)
+def practice_page_no_slash():
+    return redirect(f"{PREFIX}/", code=308)
 
 
 @app.get(f"{PREFIX}/")
-def practice_page_slash():
-    return redirect(PREFIX)
-
-
-@app.get(PREFIX)
 def practice_page():
     return render_template("practice.html", sections=SECTIONS)
 

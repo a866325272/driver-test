@@ -14,8 +14,6 @@ COPY data/questions.json data/questions.json
 COPY templates templates
 COPY static static
 
-RUN useradd --uid 1000 --create-home app && mkdir -p /data && chown app:app /data
-USER app
 VOLUME ["/data"]
 EXPOSE 8000
 

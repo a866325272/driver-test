@@ -24,22 +24,37 @@ class ApiTest(unittest.TestCase):
         return self.client.post("/driver-test/api/answer", json={"id": qid, "choice": choice})
 
     def test_pages(self):
-        for path in ("/driver-test", "/driver-test/stats", "/driver-test/static/img/q0001_1.png",
+        for path in ("/driver-test/", "/driver-test/stats", "/driver-test/static/img/q0001_1.png",
                      "/driver-test/static/practice.js", "/driver-test/static/style.css"):
             with self.client.get(path) as r:
                 self.assertEqual(r.status_code, 200, path)
 
-    def test_prefix_only(self):
-        # 所有東西都在 /driver-test 底下，舊路徑不存在，/ 轉址到練習頁
-        for path in ("/stats", "/driver-test-stats", "/api/next", "/static/practice.js"):
-            with self.client.get(path) as r:
-                self.assertEqual(r.status_code, 404, path)
-        for path in ("/", "/driver-test/"):
-            with self.client.get(path) as r:
-                self.assertEqual((r.status_code, r.headers["Location"]), (302, "/driver-test"), path)
-        for page in ("/driver-test", "/driver-test/stats"):
+    def test_canonical_trailing_slash(self):
+        # /driver-test 補上結尾斜線（和 nginx 同方向，不能反過來，否則會和 proxy 互相轉址）
+        # Location 必須是相對路徑，不能帶 container 收到的 Host（經過 proxy 會是內部位址）
+        with self.client.get("/driver-test", headers={"Host": "internal:8000"}) as r:
+            self.assertEqual((r.status_code, r.headers["Location"]), (308, "/driver-test/"))
+        with self.client.get("/driver-test/") as r:
+            self.assertEqual(r.status_code, 200)
+
+    def test_proxy_strips_prefix(self):
+        # proxy_pass 帶結尾斜線時，/driver-test/xxx 進到 app 變成 /xxx，要對到同一個 route
+        for stripped, full in (("/", "/driver-test/"), ("/stats", "/driver-test/stats"),
+                               ("/static/style.css", "/driver-test/static/style.css"),
+                               ("/static/img/q0001_1.png", "/driver-test/static/img/q0001_1.png")):
+            with self.client.get(stripped) as a, self.client.get(full) as b:
+                self.assertEqual((a.status_code, a.data), (b.status_code, b.data), stripped)
+        d = self.client.get("/api/next?section=2").get_json()
+        self.assertEqual(d["pool_size"], 230)
+        with self.client.post("/api/answer", json={"id": 1, "choice": 2}) as r:
+            self.assertEqual(r.status_code, 200)
+        with self.client.get("/driver-test-stats") as r:
+            self.assertEqual(r.status_code, 404)
+
+    def test_page_links_use_prefix(self):
+        for page in ("/driver-test/", "/driver-test/stats"):
             html = self.client.get(page).get_data(as_text=True)
-            for ref in ('href="/driver-test/static/style.css"', 'href="/driver-test"',
+            for ref in ('href="/driver-test/static/style.css"', 'href="/driver-test/"',
                         'href="/driver-test/stats"', 'const API_BASE = "/driver-test/api"',
                         'const IMG_BASE = "/driver-test/static/img/"'):
                 self.assertIn(ref, html, page)
