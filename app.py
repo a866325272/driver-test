@@ -1,6 +1,12 @@
 """汽車筆試題庫練習 web app。
 
-    python app.py          # 開發模式，http://localhost:5000
+    python app.py          # 開發模式，http://localhost:5000/driver-test
+
+路徑都在 /driver-test 底下，reverse proxy 只要設一條規則：
+    /driver-test           練習頁
+    /driver-test/stats     統計頁
+    /driver-test/api/...   API
+    /driver-test/static/.. 靜態檔與題目圖片
 環境變數：
     PROGRESS_DB  作答紀錄 SQLite 檔路徑（預設 ./var/progress.db）
 """
@@ -8,7 +14,7 @@ import json
 import os
 from pathlib import Path
 
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, abort, jsonify, redirect, render_template, request
 
 import sampler
 from store import Store
@@ -22,7 +28,10 @@ with open(BASE / "data" / "questions.json", encoding="utf-8") as f:
 # 依題號出現順序：架構一、二、三（不能用字串排序，「三」會排在「二」前面）
 SECTIONS = list(dict.fromkeys(q["section"] for q in QUESTIONS.values()))
 
-app = Flask(__name__)
+PREFIX = "/driver-test"
+API = f"{PREFIX}/api"
+
+app = Flask(__name__, static_url_path=f"{PREFIX}/static")
 store = Store(DB_PATH)
 
 
@@ -54,17 +63,32 @@ def public_question(q):
     return {k: q[k] for k in ("id", "section", "subsection", "stem", "options", "images", "option_images")}
 
 
+@app.context_processor
+def inject_api_base():
+    return {"api_base": API}
+
+
 @app.get("/")
+def root():
+    return redirect(PREFIX)
+
+
+@app.get(f"{PREFIX}/")
+def practice_page_slash():
+    return redirect(PREFIX)
+
+
+@app.get(PREFIX)
 def practice_page():
     return render_template("practice.html", sections=SECTIONS)
 
 
-@app.get("/stats")
+@app.get(f"{PREFIX}/stats")
 def stats_page():
     return render_template("stats.html", sections=SECTIONS)
 
 
-@app.get("/api/next")
+@app.get(f"{API}/next")
 def api_next():
     ids = scope_ids(request.args.get("section"))
     # 前端會帶目前畫面上的題號，避免連續兩次抽到同一題（作答前按「換一題」時）
@@ -84,7 +108,7 @@ def api_next():
     })
 
 
-@app.post("/api/answer")
+@app.post(f"{API}/answer")
 def api_answer():
     body = request.get_json(silent=True) or {}
     qid, choice = body.get("id"), body.get("choice")
@@ -96,7 +120,7 @@ def api_answer():
     return jsonify({"correct": is_correct, "answer": q["answer"], "stat": stat_view(stat)})
 
 
-@app.get("/api/stats")
+@app.get(f"{API}/stats")
 def api_stats():
     stats = store.all_stats()
     seq = store.seq()

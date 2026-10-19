@@ -115,7 +115,7 @@ for (const th of document.querySelectorAll("th[data-sort]")) {
 }
 for (const id of ["f-section", "f-status", "f-text"]) $(id).addEventListener("input", renderRows);
 
-fetch("/api/stats").then((r) => r.json()).then((d) => {
+fetch(`${API_BASE}/stats`).then((r) => r.json()).then((d) => {
   data = d;
   renderSummary();
   renderRows();

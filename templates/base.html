@@ -18,6 +18,7 @@
   <script>
     const SECTIONS = {{ sections | tojson }};
     const IMG_BASE = "{{ url_for('static', filename='img/') }}";
+    const API_BASE = {{ api_base | tojson }};
   </script>
   {% block scripts %}{% endblock %}
 </body>

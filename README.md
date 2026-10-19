@@ -2,15 +2,15 @@
 
 1090 題汽車筆試題庫的抽題練習 web app。還沒練過、或常答錯的題目會比較容易被抽到。
 
-- 練習頁 `/`：可以選擇範圍（全部，或架構一、二、三），作答後馬上顯示對錯
-- 統計頁 `/stats`：覆蓋率、各架構答對率、每題的練習次數、答對率和目前的抽中機率
+- 練習頁 `/driver-test`：可以選擇範圍（全部，或架構一、二、三），作答後馬上顯示對錯
+- 統計頁 `/driver-test/stats`：覆蓋率、各架構答對率、每題的練習次數、答對率和目前的抽中機率
 
 ## 本機執行
 
 ```bash
 python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
-./venv/bin/python app.py            # http://localhost:5000
+./venv/bin/python app.py            # http://localhost:5000/driver-test
 ```
 
 作答紀錄預設存在 `var/progress.db`，可以用環境變數 `PROGRESS_DB` 改成其他路徑。
@@ -19,12 +19,31 @@ python3 -m venv venv
 
 ```bash
 docker build -t driver-test:latest .
-docker compose up -d                # http://localhost:8000
+docker compose up -d                # http://localhost:8000/driver-test
 ```
 
 `docker-compose.yml` 會把 host 的 `./progress` mount 到 container 的 `/data`，作答紀錄
 `progress.db` 存在這裡，所以重建 container 也不會遺失。容器內以 uid 1000 執行，
 Linux host 上如果寫入被拒，先執行 `mkdir -p progress && sudo chown 1000:1000 progress`。
+
+## 路徑與 reverse proxy
+
+所有路徑都在 `/driver-test` 底下，proxy 設一條 prefix 規則就能涵蓋（nginx、Kubernetes Ingress `pathType: Prefix` 都適用）：
+
+| 路徑 | 用途 |
+|---|---|
+| `/driver-test` | 練習頁 |
+| `/driver-test/stats` | 統計頁 |
+| `/driver-test/api/...` | API |
+| `/driver-test/static/...` | CSS、JS、題目圖片 |
+
+`/` 和 `/driver-test/` 會轉址到 `/driver-test`。nginx 範例（注意 `proxy_pass` 後面不要加路徑，才會原樣保留 prefix）：
+
+```nginx
+location /driver-test {
+    proxy_pass http://127.0.0.1:8000;
+}
+```
 
 ## 抽題權重
 

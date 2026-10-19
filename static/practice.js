@@ -24,7 +24,7 @@ function renderSession() {
 async function next() {
   const params = new URLSearchParams({ section: $("section").value });
   if (current) params.set("exclude", current.id);
-  const res = await fetch(`/api/next?${params}`);
+  const res = await fetch(`${API_BASE}/next?${params}`);
   const data = await res.json();
   current = data.question;
   answered = false;
@@ -72,7 +72,7 @@ async function next() {
 async function answer(choice) {
   if (answered || !current) return;
   answered = true;
-  const res = await fetch("/api/answer", {
+  const res = await fetch(`${API_BASE}/answer`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id: current.id, choice }),

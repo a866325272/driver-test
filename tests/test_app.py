@@ -21,15 +21,31 @@ class ApiTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def answer(self, qid, choice):
-        return self.client.post("/api/answer", json={"id": qid, "choice": choice})
+        return self.client.post("/driver-test/api/answer", json={"id": qid, "choice": choice})
 
     def test_pages(self):
-        for path in ("/", "/stats", "/static/img/q0001_1.png", "/static/practice.js"):
+        for path in ("/driver-test", "/driver-test/stats", "/driver-test/static/img/q0001_1.png",
+                     "/driver-test/static/practice.js", "/driver-test/static/style.css"):
             with self.client.get(path) as r:
                 self.assertEqual(r.status_code, 200, path)
 
+    def test_prefix_only(self):
+        # 所有東西都在 /driver-test 底下，舊路徑不存在，/ 轉址到練習頁
+        for path in ("/stats", "/driver-test-stats", "/api/next", "/static/practice.js"):
+            with self.client.get(path) as r:
+                self.assertEqual(r.status_code, 404, path)
+        for path in ("/", "/driver-test/"):
+            with self.client.get(path) as r:
+                self.assertEqual((r.status_code, r.headers["Location"]), (302, "/driver-test"), path)
+        for page in ("/driver-test", "/driver-test/stats"):
+            html = self.client.get(page).get_data(as_text=True)
+            for ref in ('href="/driver-test/static/style.css"', 'href="/driver-test"',
+                        'href="/driver-test/stats"', 'const API_BASE = "/driver-test/api"',
+                        'const IMG_BASE = "/driver-test/static/img/"'):
+                self.assertIn(ref, html, page)
+
     def test_next_hides_answer(self):
-        d = self.client.get("/api/next").get_json()
+        d = self.client.get("/driver-test/api/next").get_json()
         self.assertNotIn("answer", d["question"])
         self.assertEqual(d["pool_size"], 1090)
         self.assertEqual(d["stat"]["attempts"], 0)
@@ -37,12 +53,12 @@ class ApiTest(unittest.TestCase):
 
     def test_next_section_and_exclude(self):
         for _ in range(30):
-            d = self.client.get("/api/next?section=3").get_json()
+            d = self.client.get("/driver-test/api/next?section=3").get_json()
             self.assertTrue(d["question"]["section"].startswith("架構三"))
             self.assertEqual(d["pool_size"], 436)
-        d = self.client.get("/api/next?section=all&exclude=5").get_json()
+        d = self.client.get("/driver-test/api/next?section=all&exclude=5").get_json()
         self.assertNotEqual(d["question"]["id"], 5)
-        self.assertEqual(self.client.get("/api/next?section=9").status_code, 400)
+        self.assertEqual(self.client.get("/driver-test/api/next?section=9").status_code, 400)
 
     def test_answer_updates_stats(self):
         q = self.mod.QUESTIONS[523]          # 圖片選項題，答案 (3)
@@ -62,14 +78,14 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(self.answer(1091, 1).status_code, 400)
         self.assertEqual(self.answer(1, 4).status_code, 400)
         self.assertEqual(self.answer(1, "1").status_code, 400)
-        self.assertEqual(self.client.post("/api/answer", data="x").status_code, 400)
+        self.assertEqual(self.client.post("/driver-test/api/answer", data="x").status_code, 400)
 
     def test_stats_consistent(self):
         plays = [(1, True), (1, False), (2, True), (500, False), (700, True), (700, True)]
         for qid, ok in plays:
             a = self.mod.QUESTIONS[qid]["answer"]
             self.answer(qid, a if ok else a % 3 + 1)
-        d = self.client.get("/api/stats").get_json()
+        d = self.client.get("/driver-test/api/stats").get_json()
         o = d["overall"]
         self.assertEqual((o["questions"], o["practiced"], o["attempts"], o["correct"]), (1090, 4, 6, 4))
         rows = {r["id"]: r for r in d["rows"]}
@@ -87,7 +103,7 @@ class ApiTest(unittest.TestCase):
         self.answer(10, self.mod.QUESTIONS[10]["answer"])
         import app as app_module
         mod = importlib.reload(app_module)
-        d = mod.app.test_client().get("/api/stats").get_json()
+        d = mod.app.test_client().get("/driver-test/api/stats").get_json()
         self.assertEqual(d["overall"]["attempts"], 1)
 
 
